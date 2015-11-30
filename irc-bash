@@ -47,7 +47,9 @@ function _output() {
         [[ "$@" =~ ${rule#*::} ]] && _prefix="${rule%%::*}$_prefix"
     done
     if [[ $* == "PONG" ]]; then
-    echo -ne "$dAtE\r"
+    PongTime=$(date +'%M')
+    LastPongTime=$PongTime
+    echo -ne "\\u2713\r"
     else
     printf "$_prefix%s\e[0m\n" "$*"
 fi
