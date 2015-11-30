@@ -46,13 +46,7 @@ function _output() {
     for rule in ${IRC_PREFIX[@]}; do
         [[ "$@" =~ ${rule#*::} ]] && _prefix="${rule%%::*}$_prefix"
     done
-    if [[ $* == "PONG" ]]; then
-    PongTime=$(date +'%M')
-    LastPongTime=$PongTime
-    echo -ne "\\u2713\r"
-    else
     printf "$_prefix%s\e[0m\n" "$*"
-fi
 }
 function _input() {
     local line="$@"
@@ -115,7 +109,9 @@ fi
         case "${_line%% *}" in
             "PING")
                 _send "PONG"
-		_output "PONG" ;;
+		PongTime=$(date +'%M')
+		LastPongTime=$PongTime
+		echo -ne "\\u2713\r";;
             "PRIVMSG")
                 _ch="${_line%% :*}"
                 _ch="${_ch#* }"
