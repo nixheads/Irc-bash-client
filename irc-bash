@@ -12,13 +12,13 @@ chans=( "#nixheads", "#themorningstar")
 [[ -z $IRC_PASS ]] && IRC_PASS="denied"
 [[ -z $IRC_SCRIPT ]] && IRC_SCRIPT=":s #nixheads"
 [[ -z $IRC_PREFIX ]] && IRC_PREFIX=(
-    "\e[4m\e[1m\e[31m::^ERROR"
-    "\e[24m\e[22m\e[42m\e[36m::(^<[^@]*@[^#])"
-    "\e[24m\e[1m\e[32m::#nixheads"
-    "\e[24m\e[1m\e[33m::#themorningstar"
+    "\e[0m\e[4m\e[1m\e[31m::^ERROR"
+    "\e[0m\e[24m\e[22m\e[0;92m\e[30m::(^<[^@]*@[^#])"
+    "\e[0m\e[24m\e[1m\e[32m::#nixheads"
+    "\e[0m\e[24m\e[1m\e[33m::#themorningstar"
     "\e[0m::^<"
     "\e[0m::^->"
-    "\e[24m\e[22m\e[1;30m::(.*)"
+    "\e[0m\e[24m\e[22m\e[40m\e[1;97m::(.*)"
 )
 [[ -r "$HOME/.bashirc" ]] && source "$HOME/.bashirc"
 trap "echo" SIGINT
