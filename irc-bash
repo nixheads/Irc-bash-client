@@ -1,18 +1,17 @@
 #!/bin/bash
-
-# Defaults
-LOGfile="IrcLOG"
 chans=( "#nixheads", "#themorningstar")
-[[ -z $SHIC_HOST ]] && SHIC_HOST="irc.freenode.net"
-[[ -z $SHIC_PORT ]] && SHIC_PORT=6667
-[[ -z $SHIC_NICK ]] && SHIC_NICK="Dragonkeeper"
-[[ -z $SHIC_PASS ]] && SHIC_PASS=""
-# Automatically execute these inputs at startup, separated by ;
-# e.g: SHIC_SCRIPT=":j #archlinux; Heya all!; :s;
-[[ -z $SHIC_SCRIPT ]] && SHIC_SCRIPT=":j #nixheads;:j #themorningstar;:s #nixheads; :NAMES #nixheads"
-# Red error, green background for private message, cyan for #archlinux,
-# white for conversations in and out, and gray for everything else
-[[ -z $SHIC_PREFIX ]] && SHIC_PREFIX=(
+[[ -z $IRC_SSL ]] && IRC_SSL="NO"
+[[ -z $IRC_BOT_PASS ]] && IRC_BOT_PASS="password"
+[[ -z $IRC_BOT_NICK ]] && IRC_BOT_NICK="d[-_-]b"
+[[ -z $IRC_BOT_OP_CHAN ]] && IRC_BOT_OP_CHAN="#nixheads"
+[[ -z $LOGGING ]] && LOGGING="NO"
+[[ -z $LOGfile ]] && LOGfile="IrcLOG"
+[[ -z $IRC_HOST ]] && IRC_HOST="irc.freenode.net"
+[[ -z $IRC_PORT ]] && IRC_PORT=7000
+[[ -z $IRC_NICK ]] && IRC_NICK="Dragonkeeper2"
+[[ -z $IRC_PASS ]] && IRC_PASS="denied"
+[[ -z $IRC_SCRIPT ]] && IRC_SCRIPT=":s #nixheads"
+[[ -z $IRC_PREFIX ]] && IRC_PREFIX=(
     "\e[4m\e[1m\e[31m::^ERROR"
     "\e[24m\e[22m\e[42m\e[36m::(^<[^@]*@[^#])"
     "\e[24m\e[1m\e[32m::#nixheads"
@@ -21,103 +20,116 @@ chans=( "#nixheads", "#themorningstar")
     "\e[0m::^->"
     "\e[24m\e[22m\e[1;30m::(.*)"
 )
-
-# Read config files
-[[ -r "$HOME/.shicrc" ]] && source "$HOME/.shicrc"
-_xdgconf="${XDG_CONFIG_HOME:-$HOME/.config}/shic/shicrc"
-[[ -r "$_xdgconf" ]] && source "$_xdgconf"
-
-# Don't exit at Ctrl-C
+[[ -r "$HOME/.bashirc" ]] && source "$HOME/.bashirc"
 trap "echo" SIGINT
-
-# Clean up children at exit
 trap "kill 0" EXIT
-
-# Send raw message to server
+function _imgur {
+imgur=$( curl -Ls -o /dev/null -w %{url_effective} http://imgur.com/random | sed s/imgur/i.imgur/g | sed 's/gallery\///g')
+_send "PRIVMSG $channel : < $_user : $imgur >"
+_output "-> sent $imgur"
+}
+function _Readmalines {
+readthefile=$(sed -n $_txt)
+_send "PRIVMSG $channel : $readthefile"
+_output "-> $readthefile"
+}
+function _join_chans {
+for chan in "${chans[@]}"; do
+	 _send "JOIN  :$chan"
+done
+}
 function _send() {
     printf "%s\r\n" "$*" >&3
 }
-
-# Print for user
 function _output() {
     _prefix=""
-    for rule in ${SHIC_PREFIX[@]}; do
+    for rule in ${IRC_PREFIX[@]}; do
         [[ "$@" =~ ${rule#*::} ]] && _prefix="${rule%%::*}$_prefix"
     done
-
+    if [[ $* == "PONG" ]]; then
+    echo -ne "$dAtE\r"
+    else
     printf "$_prefix%s\e[0m\n" "$*"
+fi
 }
-
-# Handle user input
 function _input() {
     local line="$@"
     if [[ "${line:0:1}" != ":" ]]; then
+	echo -ne "\033[2K"
         [[ -z $channel ]] && _output "ERROR: No channel to send to" && return
-
-	_send "PRIVMSG $channel :$line"
-	echo "<$SHIC_NICK@$channel> :$line" >> $LOGfile
-        _output "-> $channel> $line"
+	_output "-> $channel> $line"
+	if [[ $LOGGING == "YES" ]] ; then
+	echo "<$IRC_NICK@$channel> :$line" >> $LOGfile
+	fi
+        _send "PRIVMSG $channel :$line"
         return
     fi
-
     if [[ ${#line} == 2 || ${line:2:1} == " " ]]; then
         _txt="${line:3}"
         case ${line:1:1} in
+	    p ) _send "PRIVMSG $IRC_BOT_NICK :ping " ; return ;;
+	    i ) _imgur; return;;
+	    r ) _Readmalines; return;;
+	    k ) _send "KICK $channel $_txt" ; return ;;
             m ) read -r _to _msg <<< "$_txt" && _send "PRIVMSG $_to :$_msg" && _output "-> $_to> $_msg"; return;;
             l ) read -r _from _msg <<< "$_txt" && _send "PART $_from :$_msg"; return;;
             j ) _send "JOIN $_txt"; [[ -z $channel ]] && channel=$_txt; return;;
             s ) channel="$_txt";  return;;
+	    z ) _send "PRIVMSG $IRC_BOT_NICK :IDENTIFY $IRC_BOT_PASS " ; return ;;
             q ) _send "QUIT"; exit 0;;
         esac
     fi
-
-    # Not recognized command, send to server
     _send "${line:1}"
 }
-
-# Parse command line
-while getopts "h:p:n:k:c:v" flag; do
+while getopts "h:p:n:x:l:k:j:y:u:f:v" flag; do
     case $flag in
         v) printf " "; exit;;
-        h) SHIC_HOST="$OPTARG";;
-        p) SHIC_PORT="$OPTARG";;
-        n) SHIC_NICK="$OPTARG";;
-        k) SHIC_PASS="$OPTARG";;
-        c) source "$OPTARG";;
-        ?) printf "Unknown option. Usage: $0 [-h hostname] [-p port] [-n nick] [-k password] [-c configfile] [-v]\n" >&2; exit 1;;
+        h) IRC_HOST="$OPTARG";;
+        p) IRC_PORT="$OPTARG";;
+        n) IRC_NICK="$OPTARG";;
+        x) IRC_PASS="$OPTARG";;
+        l) IRC_BOT_PASS="$OPTARG";;
+        k) IRC_BOT_NICK="$OPTARG";;
+        j) IRC_BOT_OP_CHAN="$OPTARG";;
+        y) LOGGING="$OPTARG";;
+        u) LOGfile="$OPTARG";;
+        f) source "$OPTARG";;
+        ?) printf "Usage: $0 [-h hostname] [-p port] [-n nick] [-x password] [-f configfile] [-l bot pass] [-k bot nick] [-j bot op chan] [-y logging YES/NO] [-u log file] [-v]\n" >&2; exit 1;;
     esac
 done
-
-# Open connection to server
-exec 3<>/dev/tcp/$SHIC_HOST/$SHIC_PORT || exit 1
-
-# Handle messages from server
-# This runs as a separate process, which means that no variables are shared with 
-# the input process. For better or for worse. Mostly for worse.
+if [[ $IRC_SSL == "YES" ]]; then ############################# !!!!!!!!!!!
+socat STDIO OPENSSL:"$IRC_HOST":"$IRC_PORT",verify=0
+fi
+if [[ $IRC_SSL == "NO" ]]; then
+exec 3<>/dev/tcp/$IRC_HOST/$IRC_PORT || exit 1
+fi
 {
     while read _line; do
+    dAtE=$(date +'<%H:%M:%S>')
         [[ ${_line:0:1} == ":" ]] && _source="${_line%% *}" && _line="${_line#* }"
         _source="${_source:1}"
         _user=${_source%%\!*}
         _txt="${_line#*:}"
-
         case "${_line%% *}" in
             "PING")
-                _send "PONG" ;;
+                _send "PONG"
+		_output "PONG" ;;
             "PRIVMSG")
                 _ch="${_line%% :*}"
                 _ch="${_ch#* }"
-                _output "<$_user@$_ch> $_txt"
+                _output "$dAtE<$_user@$_ch> $_txt"
+	        if [[ $LOGGING == "YES" ]] ; then
 		echo "<$_user@$_ch> $_txt" >> $LOGfile
-		if [[ $_txt == *"$SHIC_NICK"* ]]
+		fi
+		if [[ $_txt == *"$IRC_NICK"* ]]
 		then
 		 notify-send "IRC  Bash  Client" "$_user mentioned you in $_ch" &
 		fi ;;
 	    "KICK")
 		notify-send "IRC  Bash  Client" "$_user kicked you from $_ch" &
-		for chan in "$chans[@]}"; do
+		for chan in "${chans[@]}"; do
 			_send "JOIN  :$chan"
-			notify-send "IRC  Bash  Client" "Rejoining $_ch like a boss" &
+			notify-send "IRC  Bash  Client" "Rejoining $_ch" &
 		done
 		;;
             *)
@@ -125,21 +137,15 @@ exec 3<>/dev/tcp/$SHIC_HOST/$SHIC_PORT || exit 1
         esac
     done
 } <&3 &
-
-# Introduce myself
-[[ $SHIC_PASS ]] && _send "PASS $SHIC_PASS"
-_send "NICK $SHIC_NICK"
-_send "USER $SHIC_NICK localhost $SHIC_HOST :$SHIC_NICK"
-
+[[ $IRC_PASS ]] && _send "PASS $IRC_PASS"
+_send "NICK $IRC_NICK"
+_send "USER $IRC_NICK localhost $IRC_HOST :$IRC_NICK"
 function _trim() { echo $1; }
-
-# Execute login script
-IFS=";" read -ra C <<< "$SHIC_SCRIPT"
+IFS=";" read -ra C <<< "$IRC_SCRIPT"
 for _cmd in "${C[@]}"; do
+    _join_chans
     _input $(_trim "$_cmd")
 done
-
-# Handle input
 while read -e line; do
     _input "$line"
 done
