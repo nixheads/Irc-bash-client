@@ -1,21 +1,20 @@
 #!/bin/bash
-chans=( "#nixheads", "#themorningstar")
+chans=( "#nixheads" )
 [[ -z $IRC_SSL ]] && IRC_SSL="NO"
-[[ -z $IRC_BOT_PASS ]] && IRC_BOT_PASS="password"
-[[ -z $IRC_BOT_NICK ]] && IRC_BOT_NICK="d[-_-]b"
-[[ -z $IRC_BOT_OP_CHAN ]] && IRC_BOT_OP_CHAN="#nixheads"
+[[ -z $IRC_BOT_PASS ]] && IRC_BOT_PASS=""
+[[ -z $IRC_BOT_NICK ]] && IRC_BOT_NICK=""
+[[ -z $IRC_BOT_OP_CHAN ]] && IRC_BOT_OP_CHAN=""
 [[ -z $LOGGING ]] && LOGGING="NO"
 [[ -z $LOGfile ]] && LOGfile="IrcLOG"
 [[ -z $IRC_HOST ]] && IRC_HOST="irc.freenode.net"
 [[ -z $IRC_PORT ]] && IRC_PORT=6667
-[[ -z $IRC_NICK ]] && IRC_NICK="Dragonkeeper"
+[[ -z $IRC_NICK ]] && IRC_NICK="MrBash"
 [[ -z $IRC_PASS ]] && IRC_PASS=""
 [[ -z $IRC_SCRIPT ]] && IRC_SCRIPT=":s #nixheads"
 [[ -z $IRC_PREFIX ]] && IRC_PREFIX=(
     "\e[0m\e[4m\e[1m\e[31m::^ERROR"
     "\e[0m\e[24m\e[22m\e[0;92m\e[30m::(^<[^@]*@[^#])"
     "\e[0m\e[24m\e[1m\e[32m::#nixheads"
-    "\e[0m\e[24m\e[1m\e[33m::#themorningstar"
     "\e[0m::^<"
     "\e[0m::^->"
     "\e[0m\e[24m\e[22m\e[40m\e[1;97m::(.*)"
