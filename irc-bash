@@ -7,9 +7,9 @@ chans=( "#nixheads", "#themorningstar")
 [[ -z $LOGGING ]] && LOGGING="NO"
 [[ -z $LOGfile ]] && LOGfile="IrcLOG"
 [[ -z $IRC_HOST ]] && IRC_HOST="irc.freenode.net"
-[[ -z $IRC_PORT ]] && IRC_PORT=7000
-[[ -z $IRC_NICK ]] && IRC_NICK="Dragonkeeper2"
-[[ -z $IRC_PASS ]] && IRC_PASS="denied"
+[[ -z $IRC_PORT ]] && IRC_PORT=6667
+[[ -z $IRC_NICK ]] && IRC_NICK="Dragonkeeper"
+[[ -z $IRC_PASS ]] && IRC_PASS=""
 [[ -z $IRC_SCRIPT ]] && IRC_SCRIPT=":s #nixheads"
 [[ -z $IRC_PREFIX ]] && IRC_PREFIX=(
     "\e[0m\e[4m\e[1m\e[31m::^ERROR"
@@ -20,6 +20,8 @@ chans=( "#nixheads", "#themorningstar")
     "\e[0m::^->"
     "\e[0m\e[24m\e[22m\e[40m\e[1;97m::(.*)"
 )
+
+LastPongTime=99
 [[ -r "$HOME/.bashirc" ]] && source "$HOME/.bashirc"
 trap "echo" SIGINT
 trap "kill 0" EXIT
@@ -39,14 +41,19 @@ for chan in "${chans[@]}"; do
 done
 }
 function _send() {
+if [[ $AcTion == "YES" ]]; then
+printf "%s\rPRIVMSG $channel :\u0001ACTION $*\u0001\n"  >&3
+AcTion="NO"
+else
     printf "%s\r\n" "$*" >&3
+fi
 }
 function _output() {
     _prefix=""
     for rule in ${IRC_PREFIX[@]}; do
         [[ "$@" =~ ${rule#*::} ]] && _prefix="${rule%%::*}$_prefix"
     done
-    printf "$_prefix%s\e[0m\n" "$*"
+printf "$_prefix%s\e[0m\n" "$*"
 }
 function _input() {
     local line="$@"
@@ -63,6 +70,7 @@ function _input() {
     if [[ ${#line} == 2 || ${line:2:1} == " " ]]; then
         _txt="${line:3}"
         case ${line:1:1} in
+	    a ) AcTion="YES" ; _send "$_txt"; return;;
 	    p ) _send "PRIVMSG $IRC_BOT_NICK :ping " ; return ;;
 	    i ) _imgur; return;;
 	    r ) _Readmalines; return;;
@@ -71,8 +79,8 @@ function _input() {
             l ) read -r _from _msg <<< "$_txt" && _send "PART $_from :$_msg"; return;;
             j ) _send "JOIN $_txt"; [[ -z $channel ]] && channel=$_txt; return;;
             s ) channel="$_txt";  return;;
-	    z ) _send "PRIVMSG $IRC_BOT_NICK :IDENTIFY $IRC_BOT_PASS " ; return ;;
-            q ) _send "QUIT"; exit 0;;
+	    z ) _send "PRIVMSG $IRC_BOT_NICK :IDENTIFY $IRC_BOT_PASS" ; return ;;
+            q ) _send "QUIT"; stty echo;  exit 0;;
         esac
     fi
     _send "${line:1}"
@@ -93,15 +101,17 @@ while getopts "h:p:n:x:l:k:j:y:u:f:v" flag; do
         ?) printf "Usage: $0 [-h hostname] [-p port] [-n nick] [-x password] [-f configfile] [-l bot pass] [-k bot nick] [-j bot op chan] [-y logging YES/NO] [-u log file] [-v]\n" >&2; exit 1;;
     esac
 done
-if [[ $IRC_SSL == "YES" ]]; then ############################# !!!!!!!!!!!
-socat STDIO OPENSSL:"$IRC_HOST":"$IRC_PORT",verify=0
+if [[ $IRC_SSL == "YES" ]]; then
+socat STDIO OPENSSL:$IRC_HOST:$IRC_PORT,verify=0
 fi
 if [[ $IRC_SSL == "NO" ]]; then
-exec 3<>/dev/tcp/$IRC_HOST/$IRC_PORT || exit 1
+connect() { exec 3<>/dev/tcp/$IRC_HOST/$IRC_PORT || exit 1; }
 fi
+connect
 {
     while read _line; do
     dAtE=$(date +'<%H:%M:%S>')
+#         echo -ne "\\u2717\r"
         [[ ${_line:0:1} == ":" ]] && _source="${_line%% *}" && _line="${_line#* }"
         _source="${_source:1}"
         _user=${_source%%\!*}
@@ -111,7 +121,7 @@ fi
                 _send "PONG"
 		PongTime=$(date +'%M')
 		LastPongTime=$PongTime
-		echo -ne "\\u2713\r";;
+		echo -ne "\\u2713\r" ;;
             "PRIVMSG")
                 _ch="${_line%% :*}"
                 _ch="${_ch#* }"
@@ -139,7 +149,7 @@ fi
 _send "NICK $IRC_NICK"
 _send "USER $IRC_NICK localhost $IRC_HOST :$IRC_NICK"
 function _trim() { echo $1; }
-IFS=";" read -ra C <<< "$IRC_SCRIPT"
+IFS=";" read -rsa C <<< "$IRC_SCRIPT"
 for _cmd in "${C[@]}"; do
     _join_chans
     _input $(_trim "$_cmd")
