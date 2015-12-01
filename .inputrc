@@ -1,1 +1,4 @@
 "\C-l":redraw-current-line
+set echo-control-characters off
+set disable-completion on
+"\C-d": kill-whole-line
